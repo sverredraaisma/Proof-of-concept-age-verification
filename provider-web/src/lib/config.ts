@@ -1,5 +1,4 @@
 export const SERVER_URL = process.env.SERVER_URL ?? 'http://localhost:4000';
-export const PROVIDER_NAME = 'Demo National ID Provider';
 
 // Fake "logged in" users for the demo. In reality this is a login system.
 export const DEMO_USERS = [

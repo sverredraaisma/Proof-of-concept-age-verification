@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Terminal } from '@/components/Terminal';
 import { useLog } from '@/lib/useLog';
-import { DEMO_USERS, PROVIDER_NAME, type DemoUser } from '@/lib/config';
+import { DEMO_USERS, type DemoUser } from '@/lib/config';
+import { resolvePublicConfig } from '@/lib/publicConfig';
 
 type Mode = 'manual' | 'easy';
 
 export default function ProviderClient() {
+  const { PROVIDER_NAME } = resolvePublicConfig();
   const params = useSearchParams();
   const urlNonce = params.get('nonce') ?? '';
   const urlCallback = params.get('callback') ?? '';

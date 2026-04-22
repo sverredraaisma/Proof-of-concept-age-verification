@@ -1,0 +1,55 @@
+# docker-compose for the age verification demo.
+# All public URLs and ports are env-driven so the same images can run on
+# localhost, a staging VM, or behind real domains just by editing .env.
+# See .env.example for every knob.
+
+services:
+  server:
+    build:
+      context: ./server
+    image: age-verify-server:latest
+    environment:
+      PORT: 4000
+      KEY_TIMESPAN_MS: ${KEY_TIMESPAN_MS:-60000}
+    ports:
+      - "${SERVER_PORT:-4000}:4000"
+    restart: unless-stopped
+
+  provider-web:
+    build:
+      context: ./provider-web
+    image: age-verify-provider-web:latest
+    environment:
+      # Provider UI → key server. Uses the internal docker network hostname
+      # by default; override to point at an externally hosted server.
+      SERVER_URL: ${SERVER_INTERNAL_URL:-http://server:4000}
+      PROVIDER_NAME: ${PROVIDER_NAME:-Demo National ID Provider}
+    ports:
+      - "${PROVIDER_PORT:-3002}:3002"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  consumer-web:
+    build:
+      context: ./consumer-web
+    image: age-verify-consumer-web:latest
+    environment:
+      # Server-side: broker fetches /keys from here.
+      SERVER_URL: ${SERVER_INTERNAL_URL:-http://server:4000}
+      # Client-side: injected into window.__APP_CONFIG__ so the browser knows
+      # where to open the easy-flow redirect and the broker WebSocket. These
+      # must be reachable from the *user's* browser, not just from the
+      # consumer container — so use public URLs here.
+      PROVIDER_WEB_URL: ${PROVIDER_WEB_URL:-http://localhost:3002}
+      WS_PUBLIC_URL: ${WS_PUBLIC_URL:-ws://localhost:3011/terminal}
+      # Branding
+      CONSUMER_NAME: ${CONSUMER_NAME:-Demo Shop}
+      # Broker ws bind port (inside the container).
+      WS_PORT: 3011
+    ports:
+      - "${CONSUMER_PORT:-3001}:3001"
+      - "${WS_PORT:-3011}:3011"
+    depends_on:
+      - server
+    restart: unless-stopped

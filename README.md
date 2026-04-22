@@ -15,7 +15,16 @@ the consumer's backend and the provider never learns *which* consumer is asking.
 
 Each frontend renders a live terminal-style log so you can see every step of the flow.
 
-## Quick start
+## Quick start — Docker (recommended)
+
+```bash
+cp .env.example .env        # tweak URLs/ports for your host
+docker compose up --build
+```
+
+Then open <http://localhost:3001> (consumer) and <http://localhost:3002> (provider).
+
+## Quick start — local dev
 
 ```bash
 # install everything
@@ -29,7 +38,21 @@ npm --prefix provider-web run dev
 npm --prefix consumer-web run dev
 ```
 
-Then open <http://localhost:3001> (consumer) and <http://localhost:3002> (provider).
+## Deployment
+
+All public URLs and ports are env-driven via `docker-compose.yml`. `.env.example`
+documents every knob; the important ones when moving off `localhost` are:
+
+| Variable            | What it is                                           |
+| ------------------- | ---------------------------------------------------- |
+| `PROVIDER_WEB_URL`  | Public URL the browser uses for the easy-flow link.  |
+| `WS_PUBLIC_URL`     | Public URL the browser uses for the terminal stream. |
+| `SERVER_INTERNAL_URL` | How the frontend containers reach the key server.  |
+| `PROVIDER_NAME` / `CONSUMER_NAME` | Branding shown in each UI.             |
+| `KEY_TIMESPAN_MS`   | How often the key server rotates keys.               |
+
+Public URLs are *injected at request time* into the client's HTML, so the same
+built images can be redeployed against different domains without rebuilding.
 
 ## The two flows
 

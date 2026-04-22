@@ -62,11 +62,23 @@ has its own `package.json` and is installed/run independently.
 - Consumer must accept signatures from either stored key (the incoming signature's `kid`
   picks which one).
 
-## Ports & env
+## Ports, env & deployment
 
-All ports and URLs are fixed constants in code — there is no `.env` loading in the frontends
-to keep the demo one-command. If you need to change ports, update `server/src/config.js`,
-`consumer-web/src/lib/config.ts`, `provider-web/src/lib/config.ts` together.
+Every port and URL is env-driven for Docker deployment. Defaults are set in
+`docker-compose.yml` and explained in `.env.example`.
+
+- **Server-side env** (`SERVER_URL`, `WS_PORT`, `PROVIDER_NAME`, `CONSUMER_NAME`,
+  `KEY_TIMESPAN_MS`) is read directly via `process.env` in the Node runtime.
+- **Client-side URLs** (`PROVIDER_WEB_URL`, `WS_PUBLIC_URL`) cannot be read from
+  `process.env` in the browser bundle, so each Next app injects them into
+  `window.__APP_CONFIG__` from its root layout. Client code reads them via
+  `resolvePublicConfig()` in `src/lib/publicConfig.ts`. `layout.tsx` is marked
+  `export const dynamic = 'force-dynamic'` so the injected values are re-read on
+  every request — the same image can be redeployed against different domains
+  with only an env-var change.
+- Both Next apps use `output: 'standalone'` in `next.config.mjs`; the Dockerfile
+  copies `.next/standalone` + `.next/static` into the runtime image and runs
+  `node server.js` with `PORT`/`HOSTNAME` env vars.
 
 ## Conventions
 

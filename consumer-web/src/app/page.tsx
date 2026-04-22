@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Terminal } from '@/components/Terminal';
 import { useLog } from '@/lib/useLog';
 import { useBrokerFeed } from '@/lib/useBrokerFeed';
-import { CONSUMER_NAME, PROVIDER_WEB_URL } from '@/lib/config';
+import { CONSUMER_NAME } from '@/lib/config';
+import { resolvePublicConfig } from '@/lib/publicConfig';
 
 type Verdict =
   | { kind: 'none' }
@@ -79,6 +80,7 @@ export default function Page() {
     }
   }
 
+  const { PROVIDER_WEB_URL } = resolvePublicConfig();
   const callback =
     typeof window !== 'undefined' ? `${window.location.origin}/callback` : '';
   const easyLink =

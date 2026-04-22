@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { WS_PUBLIC_URL } from './config';
+import { resolvePublicConfig } from './publicConfig';
 import type { LogLevel } from './useLog';
 
 type BrokerMsg =
@@ -19,6 +19,8 @@ export function useBrokerFeed(log: LogFns) {
     let ws: WebSocket | null = null;
     let closed = false;
     let retry = 0;
+
+    const { WS_PUBLIC_URL } = resolvePublicConfig();
 
     function connect() {
       log.info(`Opening WebSocket to broker at ${WS_PUBLIC_URL}…`);
