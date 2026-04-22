@@ -15,13 +15,13 @@
 
 services:
   server:
-    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER=your-github-owner}/${IMAGE_REPO:-proof-of-concept-age-verification}-server:${IMAGE_TAG:-latest}
+    image: ghcr.io/sverredraaisma/proof-of-concept-age-verification-server:latest
     pull_policy: always
 
   provider-web:
-    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER=your-github-owner}/${IMAGE_REPO:-proof-of-concept-age-verification}-provider-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/sverredraaisma/proof-of-concept-age-verification-provider-web:latest
     pull_policy: always
 
   consumer-web:
-    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER=your-github-owner}/${IMAGE_REPO:-proof-of-concept-age-verification}-consumer-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/sverredraaisma/proof-of-concept-age-verification-consumer-web:latest
     pull_policy: always
