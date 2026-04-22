@@ -54,6 +54,44 @@ documents every knob; the important ones when moving off `localhost` are:
 Public URLs are *injected at request time* into the client's HTML, so the same
 built images can be redeployed against different domains without rebuilding.
 
+## CI: build & push to GHCR
+
+`.github/workflows/build-and-push.yml` builds all three images in parallel on
+every push to `main`, on every `v*.*.*` tag, and on pull requests (PR builds
+don't push). Images land at:
+
+```
+ghcr.io/<owner>/<repo>-server:<tag>
+ghcr.io/<owner>/<repo>-provider-web:<tag>
+ghcr.io/<owner>/<repo>-consumer-web:<tag>
+```
+
+Tags: branch name, `sha-<short>`, semver on git tags, and `latest` on `main`.
+The workflow uses `GITHUB_TOKEN` only — no extra secrets to configure — but the
+GHCR packages default to *private*. After the first successful push, visit the
+package settings on GitHub to set them public (or pull with a PAT on the deploy
+host).
+
+## Deploy from GHCR
+
+On the target server:
+
+```bash
+# one-time
+git clone <repo> && cd <repo>
+cp .env.example .env && $EDITOR .env
+
+export IMAGE_OWNER=your-github-owner-lowercase
+export IMAGE_TAG=latest                 # or sha-xxxx, or v1.2.3
+
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+```
+
+`docker-compose.ghcr.yml` overrides the `build:` targets with pre-built GHCR
+images, so the host never compiles anything. To roll out a new build, `docker
+compose pull` and `up -d` again.
+
 ## The two flows
 
 ### Manual flow (maximum privacy)
