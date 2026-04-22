@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Terminal } from '@/components/Terminal';
 import { useLog } from '@/lib/useLog';
+import { useBrokerFeed } from '@/lib/useBrokerFeed';
 import { CONSUMER_NAME, PROVIDER_WEB_URL } from '@/lib/config';
 
 type Verdict =
@@ -12,6 +13,7 @@ type Verdict =
 
 export default function Page() {
   const log = useLog();
+  useBrokerFeed(log);
   const [nonce, setNonce] = useState('');
   const [token, setToken] = useState('');
   const [verdict, setVerdict] = useState<Verdict>({ kind: 'none' });

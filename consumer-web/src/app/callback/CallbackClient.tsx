@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Terminal } from '@/components/Terminal';
 import { useLog } from '@/lib/useLog';
+import { useBrokerFeed } from '@/lib/useBrokerFeed';
 import { CONSUMER_NAME } from '@/lib/config';
 
 type Verdict =
@@ -16,6 +17,7 @@ export default function CallbackClient() {
   const token = params.get('token') ?? '';
   const urlNonce = params.get('nonce') ?? '';
   const log = useLog();
+  useBrokerFeed(log);
   const [verdict, setVerdict] = useState<Verdict>({ kind: 'pending' });
 
   useEffect(() => {

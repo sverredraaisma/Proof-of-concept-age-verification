@@ -1,5 +1,5 @@
 import { createPublicKey, verify as edVerify } from 'node:crypto';
-import { getKeys } from './keyCache';
+import { getCachedKeys } from './broker';
 
 // Matches server/src/sign.js: bytes signed are `${nonce}|${dob}` in UTF-8.
 function payloadBytes(nonce: string, dob: string) {
@@ -18,7 +18,6 @@ export type VerifyOk = {
   kid: string;
   keyRole: 'current' | 'next';
   ageYears: number;
-  fetchedKeys: boolean;
 };
 
 export type VerifyFail = { ok: false; reason: string };
@@ -59,37 +58,26 @@ export async function verifyToken(
   if (nonce !== expectedNonce) {
     return {
       ok: false,
-      reason: `Nonce mismatch — token nonce does not match the challenge we issued.`,
+      reason: 'Nonce mismatch — token nonce does not match the challenge we issued.',
     };
   }
   trace.log('success', 'Nonce matches the challenge this consumer issued.');
 
-  let fetchedKeys = false;
-  trace.log('step', 'Looking up signing key in local key cache…');
-  const keyset = await getKeys({
-    onFetchStart: () => {
-      fetchedKeys = true;
-      trace.log('step', 'Cache stale — fetching /keys from provider…');
-    },
-    onFetchDone: (c) =>
-      trace.log(
-        'success',
-        `Fetched ${c.keys.length} public keys (timespan ${c.timespanMs}ms).`,
-      ),
-    onCacheHit: (c) =>
-      trace.log(
-        'info',
-        `Cache hit — age ${Math.floor(
-          (Date.now() - c.fetchedAt) / 1000,
-        )}s, holds keys: ${c.keys.map((k) => `${k.role}:${k.kid}`).join(', ')}.`,
-      ),
-  });
+  trace.log('step', 'Reading signing keys from the broker cache (NOT fetching).');
+  const keyset = await getCachedKeys();
+  const ageSec = Math.floor((Date.now() - keyset.fetchedAt) / 1000);
+  trace.log(
+    'info',
+    `Cache age ${ageSec}s, holds ${keyset.keys
+      .map((k) => `${k.role}:${k.kid}`)
+      .join(', ')}`,
+  );
 
   const match = keyset.keys.find((k) => k.kid === kid);
   if (!match) {
     return {
       ok: false,
-      reason: `Unknown signing key (kid=${kid}). Consumer cache holds ${keyset.keys
+      reason: `Unknown signing key (kid=${kid}). Broker cache holds ${keyset.keys
         .map((k) => k.kid)
         .join(', ')}.`,
     };
@@ -98,13 +86,11 @@ export async function verifyToken(
 
   const pub = createPublicKey(match.publicKeyPem);
   const valid = edVerify(null, payloadBytes(nonce, dob), pub, fromBase64Url(sig));
-  if (!valid) {
-    return { ok: false, reason: 'Signature verification failed.' };
-  }
+  if (!valid) return { ok: false, reason: 'Signature verification failed.' };
   trace.log('success', 'Ed25519 signature is valid.');
 
   const ageYears = computeAge(dob);
   trace.log('info', `Computed age from dob: ${ageYears} years.`);
 
-  return { ok: true, nonce, dob, kid, keyRole: match.role, ageYears, fetchedKeys };
+  return { ok: true, nonce, dob, kid, keyRole: match.role, ageYears };
 }

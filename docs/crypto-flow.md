@@ -65,10 +65,17 @@ At every rotation:
 
 ## Consumer refresh strategy
 
-Consumers fetch `/keys` every `T/2` **plus a small random jitter**. If all consumers
-synchronized on `T/2` boundaries the thundering herd would just move to those boundaries;
-jitter (default ±20%) spreads it out. When a consumer's cached set is older than `T/2` at
-verification time, it does a blocking fetch before verifying.
+Consumers fetch `/keys` on a **cron timer** at `T/2 ± 20%` jitter, owned by the broker
+module and booted from the Next `instrumentation` hook at server start. Jitter prevents
+the thundering herd that would appear if all consumers synchronized on `T/2` boundaries.
+
+**Verify requests never trigger a fetch.** The broker is the only code path that calls
+`/keys`; `verifyToken` just reads whatever is in the cache. This is deliberate: if a
+verify request could cause a `/keys` fetch, a provider could time-correlate the fetch
+with a nearby signing request and defeat the unlinkability property of the manual flow.
+If the cache is somehow empty at verify time (only possible before the first cron tick
+completes at boot), verify blocks on that first fetch — but still never initiates its
+own.
 
 Because the exact rotation moment is not advertised, there is a short window after a
 rotation where a consumer may still hold only the *retired* key plus what was formerly the

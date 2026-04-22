@@ -40,8 +40,11 @@ predictable.
 - **server**: an in-memory `{ current, next, timespanMs, rotatedAt }` object and a
   `setInterval` that rotates it.
 - **provider-web**: no persistent state. A React `useState` for the fake-logged-in user.
-- **consumer-web**: key cache lives in the Next.js process (module-level variable),
-  refreshed lazily on every verify if older than `timespan/2`.
+- **consumer-web**: key cache lives in the broker module (`src/lib/broker.ts`), pinned
+  to `globalThis` for HMR-safety. Refreshed by a cron timer booted from the Next
+  `instrumentation` hook at process start — every `timespan/2` ± 20% jitter. Verify
+  requests only read the cache; they never trigger a fetch. A WebSocket server on
+  port 3011 broadcasts broker events so connected terminals see refreshes live.
 
 Nothing is ever written to disk.
 
@@ -61,9 +64,20 @@ Nothing is ever written to disk.
 - `/` — start a verification, displays the nonce and manual/easy flow options.
 - `/callback` — easy-flow landing, reads token from URL, calls verify API.
 - `/api/start` — mints a nonce (UUID v4).
-- `/api/verify` — verifies a token against cached public keys.
+- `/api/verify` — verifies a token against cached public keys (no network I/O).
+- `ws://localhost:3011/terminal` — broker event stream consumed by the frontend
+  `useBrokerFeed` hook and rendered into the same terminal.
 
 ## Log / terminal
 
-Both frontends render a `<Terminal>` component that consumes a shared `useLog()` hook. Every
-step pushes an entry. See `docs/crypto-flow.md` for the exact sequence.
+Both frontends render a `<Terminal>` component that consumes a shared `useLog()` hook.
+On the consumer side, a second feed — the broker WebSocket — pushes server-side events
+into the same log, so the browser shows cron key refreshes live and fully decoupled from
+any verify call this tab is making.
+
+## Why a broker instead of lazy fetches
+
+Earlier iterations fetched `/keys` on demand when the cache was stale at verify time. A
+provider observing both endpoints could time-correlate a `/keys` request with a nearby
+`/sign` and learn which consumer was handling which verification. Moving key refresh to a
+cron timer that runs from boot — independent of any request — breaks that correlation.

@@ -26,6 +26,17 @@ has its own `package.json` and is installed/run independently.
 4. **Signatures are verified on the consumer's Next.js server**, not in the browser. Public
    keys are fetched there and cached. This keeps the key cache lifetime honest (one cache
    per consumer deployment, not per browser tab).
+5. **Key fetches must be independent of verify requests.** If the consumer fetches `/keys`
+   lazily on verify, the provider can time-correlate the fetch with a nearby signing
+   request. The `broker` module (`src/lib/broker.ts`) owns a cron timer (base
+   `timespan/2` ± 20% jitter) that refreshes the cache regardless of activity, booted by
+   `src/instrumentation.ts`. `verifyToken` only *reads* the cache via `getCachedKeys()` —
+   it must never call `fetch`. Do not re-introduce a lazy refresh path.
+6. **Broker events stream to the browser over WebSocket** (`src/lib/wsServer.ts`, port
+   3011, path `/terminal`). The `useBrokerFeed` hook pipes them into the same `useLog`,
+   so the terminal shows cron refreshes and rotations even when no user action is
+   happening. When the hook connects it replays a small ring buffer so late-opening tabs
+   are not blank.
 
 ## Cryptography
 
