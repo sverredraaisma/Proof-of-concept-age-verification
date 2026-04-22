@@ -19,7 +19,9 @@ export function useLog() {
 
   const log = useCallback((level: LogLevel, msg: string) => {
     idRef.current += 1;
-    setEntries((prev) => [...prev, { id: idRef.current, ts: hhmmss(), level, msg }]);
+    const id = idRef.current;
+    const ts = hhmmss();
+    setEntries((prev) => [...prev, { id, ts, level, msg }]);
   }, []);
 
   return {
