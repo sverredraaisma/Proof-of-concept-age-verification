@@ -1,5 +1,5 @@
 import { WebSocketServer, type WebSocket } from 'ws';
-import { recentLogs, subscribe } from './broker';
+import { subscribe } from './broker';
 import { WS_PORT } from './config';
 
 /**
@@ -17,16 +17,15 @@ export function startWSServer() {
   g.__consumerWss = wss;
 
   wss.on('connection', (ws: WebSocket) => {
-    // Replay recent history so a freshly opened tab isn't blank.
+    // No history is replayed — reloading the page intentionally clears the
+    // terminal. The browser only sees broker events that fire while its
+    // socket is open.
     ws.send(
       JSON.stringify({
         type: 'hello',
         msg: `connected to consumer broker on :${WS_PORT}`,
       }),
     );
-    for (const entry of recentLogs()) {
-      ws.send(JSON.stringify({ type: 'log', ...entry, replay: true }));
-    }
   });
 
   subscribe((entry) => {

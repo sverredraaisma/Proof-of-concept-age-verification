@@ -22,7 +22,6 @@ type BrokerState = {
   firstFetch: Promise<void> | null;
   started: boolean;
   timer: NodeJS.Timeout | null;
-  recentLogs: BrokerLog[]; // small ring buffer for WS clients that connect late
 };
 
 const g = globalThis as unknown as { __consumerBroker?: BrokerState };
@@ -34,14 +33,11 @@ const state: BrokerState =
     firstFetch: null,
     started: false,
     timer: null,
-    recentLogs: [],
   });
 state.emitter.setMaxListeners(100);
 
 function emit(level: BrokerLogLevel, msg: string) {
   const entry: BrokerLog = { level, msg, ts: new Date().toISOString() };
-  state.recentLogs.push(entry);
-  if (state.recentLogs.length > 200) state.recentLogs.shift();
   state.emitter.emit('log', entry);
   // eslint-disable-next-line no-console
   console.log(`[broker][${level}] ${msg}`);
@@ -125,8 +121,4 @@ export async function getCachedKeys(): Promise<KeyCache> {
 export function subscribe(listener: (entry: BrokerLog) => void): () => void {
   state.emitter.on('log', listener);
   return () => state.emitter.off('log', listener);
-}
-
-export function recentLogs(): BrokerLog[] {
-  return state.recentLogs.slice();
 }

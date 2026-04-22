@@ -35,8 +35,9 @@ has its own `package.json` and is installed/run independently.
 6. **Broker events stream to the browser over WebSocket** (`src/lib/wsServer.ts`, port
    3011, path `/terminal`). The `useBrokerFeed` hook pipes them into the same `useLog`,
    so the terminal shows cron refreshes and rotations even when no user action is
-   happening. When the hook connects it replays a small ring buffer so late-opening tabs
-   are not blank.
+   happening. The server does **not** buffer or replay past events — reloading the page
+   intentionally clears the terminal so it never grows unbounded across the demo's
+   lifetime. A freshly opened tab only sees events that fire while its socket is open.
 
 ## Cryptography
 

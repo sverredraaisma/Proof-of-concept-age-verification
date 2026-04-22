@@ -5,7 +5,7 @@ import type { LogLevel } from './useLog';
 
 type BrokerMsg =
   | { type: 'hello'; msg: string }
-  | { type: 'log'; level: LogLevel; msg: string; ts: string; replay?: boolean };
+  | { type: 'log'; level: LogLevel; msg: string; ts: string };
 
 type LogFns = Record<LogLevel, (m: string) => void>;
 
@@ -37,8 +37,7 @@ export function useBrokerFeed(log: LogFns) {
         if (m.type === 'hello') {
           log.info(`[broker] ${m.msg}`);
         } else if (m.type === 'log') {
-          const prefix = m.replay ? '[broker·replay] ' : '[broker] ';
-          log[m.level](`${prefix}${m.msg}`);
+          log[m.level](`[broker] ${m.msg}`);
         }
       };
       ws.onclose = () => {
