@@ -1,0 +1,78 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## What this project is
+
+A **proof of concept** for age verification using rotating asymmetric keys. Three sibling
+apps talk to each other; there are no shared packages and no monorepo tooling — each app
+has its own `package.json` and is installed/run independently.
+
+- `server/` — Node.js + Express, holds the private keys, port 4000.
+- `provider-web/` — Next.js (App Router, TS), the age provider's UI, port 3002.
+- `consumer-web/` — Next.js (App Router, TS), the consumer's UI, port 3001.
+
+## Non-negotiable principles
+
+1. **User feedback is the product.** This is a demo. Every action on either frontend must
+   produce a clear, timestamped line in the on-screen terminal. If you add a step and do
+   not log it, you've broken the demo. Log lines should read like a narrated story: "Generated
+   nonce `abcd1234…`", "Fetched 2 public keys from provider", "Signature valid ✓".
+2. **Keep it simple.** No auth system, no database, no persistence. The "login" at the
+   provider is a fake dropdown. State lives in memory (server) or React state (frontends).
+3. **The manual flow must stay fully decoupled.** The consumer backend and provider backend
+   must never exchange requests during the manual flow — everything crosses the boundary
+   as text the user copy-pastes. Do not "cheat" by adding a direct API call.
+4. **Signatures are verified on the consumer's Next.js server**, not in the browser. Public
+   keys are fetched there and cached. This keeps the key cache lifetime honest (one cache
+   per consumer deployment, not per browser tab).
+
+## Cryptography
+
+- **Algorithm:** Ed25519, via Node's built-in `crypto` module (`generateKeyPairSync('ed25519')`,
+  `sign(null, data, privateKey)`, `verify(null, data, publicKey, sig)`). No external crypto
+  libraries. Public keys are exported as SPKI PEM; signatures are base64url.
+- **Signed payload:** the exact UTF-8 bytes of `` `${nonce}|${dob}` ``. Pipe-delimited, not
+  JSON, so there is no canonicalization ambiguity. If you change the payload format you
+  must change it in `server/src/sign.js` and `consumer-web/src/lib/verify.ts` together.
+- **Token format:** URL-safe base64 of a JSON object `{ nonce, dob, kid, sig }`. `kid` is
+  the key id the consumer uses to pick which stored public key to verify with.
+
+## Key rotation contract
+
+- The server always has exactly two keys: `current` and `next`. `current` signs; `next` is
+  published ahead of time.
+- `KEY_TIMESPAN_MS` (default 60000) is how long a key stays `current`. Rotation fires on
+  that interval: `next` becomes `current`, a fresh `next` is generated, the old `current`
+  is discarded.
+- The **exact rotation moment is not advertised**. The `/keys` response tells the consumer
+  the *timespan*, not the next rotation timestamp. Consumers refetch every `timespan / 2`.
+- Consumer must accept signatures from either stored key (the incoming signature's `kid`
+  picks which one).
+
+## Ports & env
+
+All ports and URLs are fixed constants in code — there is no `.env` loading in the frontends
+to keep the demo one-command. If you need to change ports, update `server/src/config.js`,
+`consumer-web/src/lib/config.ts`, `provider-web/src/lib/config.ts` together.
+
+## Conventions
+
+- TypeScript on both frontends, plain JS on the server (nothing in the server needs types
+  badly enough to justify a build step for a demo).
+- Tailwind on both frontends. Terminal uses a monospace font, dark background, green text,
+  and auto-scrolls to the bottom.
+- Log entries have a `level` of `info` | `step` | `success` | `warn` | `error` and a
+  monospace timestamp `HH:MM:SS.mmm`.
+- Do not introduce a shared npm workspace. The apps installing independently is a feature
+  — it makes the demo robust to partial setup.
+
+## When extending
+
+- **Changing the signed payload** (e.g. to "over18" instead of DoB): touch `server/src/sign.js`
+  and `consumer-web/src/lib/verify.ts`. Update the terminal log strings so the user sees
+  what is being signed.
+- **Adding a flow variant**: add a new route under both frontends and a new doc under `docs/`.
+  Do not fork the existing flow files — keep `manual` and `easy` independent.
+- **Before reporting the task complete**, run each of the three apps and walk through both
+  flows in a browser. Type-checking alone does not validate a demo.
